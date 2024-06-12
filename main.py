@@ -6,7 +6,7 @@ from sklearn.datasets import make_moons
 from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
-from maf import MADE, MAF, Permute
+from maf import MAF
 
 Array = jax.Array
 OptState  = optax.OptState 
@@ -58,13 +58,7 @@ X = scaler.fit_transform(X)
 _, data_dim = X.shape
 _, y_dim = Y.shape
 
-layers = []
-for i in range(n_layers):
-    keys = jr.split(jr.fold_in(key, i))
-    layers += [MADE(data_dim, hidden_dim, y_dim, key=keys[0])]
-    layers += [Permute(data_dim, key=keys[1])]
-
-maf = MAF(data_dim, *layers)
+maf = MAF(data_dim, hidden_dim, n_layers, y_dim, key=key)
 
 opt = optax.adam(lr)
 opt_state = opt.init(eqx.filter(maf, eqx.is_array))

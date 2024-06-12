@@ -28,11 +28,19 @@ class Permute(eqx.Module):
 
 
 class MAF(eqx.Module):
-    n_inputs: int
+    input_dim: int
     layers: Tuple[eqx.Module]
 
-    def __init__(self, n_inputs, *layers):
-        self.n_inputs = n_inputs
+    def __init__(
+        self, input_dim, hidden_dim, n_layers, y_dim=None, *, key
+    ):
+        layers = []
+        for i in range(n_layers):
+            keys = jr.split(jr.fold_in(key, i))
+            layers += [MADE(input_dim, hidden_dim, y_dim, key=keys[0])]
+            layers += [Permute(input_dim, key=keys[1])]
+
+        self.input_dim = input_dim
         self.layers = tuple(layers)
 
     def forward(self, x, y=None):
@@ -57,7 +65,7 @@ class MAF(eqx.Module):
         return z, log_det
 
     def sample(self, key, y=None):
-        u = jr.normal(key, (self.n_inputs,))
+        u = jr.normal(key, (self.input_dim,))
         samples, log_det = self.reverse(u, y)
         return samples, log_det
 
