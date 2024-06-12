@@ -4,6 +4,7 @@ import equinox as eqx
 from jaxtyping import PyTree
 import optax
 from sklearn.datasets import make_moons
+from sklearn.preprocessing import StandardScaler
 import matplotlib.pyplot as plt
 
 from maf import MADE, MAF, Permute
@@ -14,11 +15,7 @@ Optimiser = optax.GradientTransformation
 
 
 @eqx.filter_jit
-def batch_loss_fn(
-    model: MAF, 
-    x: Array, 
-    y: Array
-) -> Array:
+def batch_loss_fn(model: MAF, x: Array, y: Array) -> Array:
     model = eqx.tree_inference(model, False)
     loss = jax.vmap(model.loss)(x=x, y=y).mean()
     return loss
@@ -40,11 +37,7 @@ def make_step(
 
 
 @eqx.filter_jit
-def batch_eval_fn(
-    model: MAF, 
-    x: Array, 
-    y: Array
-) -> Array:
+def batch_eval_fn(model: MAF, x: Array, y: Array) -> Array:
     model = eqx.tree_inference(model, True)
     loss = jax.vmap(model.loss)(x=x, y=y).mean()
     return loss
@@ -53,13 +46,14 @@ def batch_eval_fn(
 key = jr.PRNGKey(0)
 n_data = 2000
 n_steps = 10_000
-n_samples = 10_000
+n_samples = 20_000
 hidden_dim = 8
 n_layers = 5
 
 X, Y = make_moons(n_data, noise=0.05)
-X, Y = jnp.asarray(X), jnp.asarray(Y)[:, None]
-X = (X - X.mean()) / X.std()
+X, Y = jnp.asarray(X), jnp.asarray(Y)[:, jnp.newaxis]
+scaler = StandardScaler()
+X = scaler.fit_transform(X)
 
 data_dim = X.shape[-1]
 y_dim = Y.shape[-1]
@@ -88,8 +82,9 @@ samples, _ = jax.vmap(maf.sample)(keys, Q)
 
 plt.figure(dpi=200)
 plt.hist2d(*samples.T, bins=200, cmap="PuOr")
-plt.xlim(-2.5, 2.8)
-plt.ylim(-1.5, 1.2)
+plt.xlim(-2., 2.)
+plt.ylim(-2., 2.)
+plt.axis("off")
 plt.savefig("samples.png")
 plt.close()
 
