@@ -1,7 +1,6 @@
 from typing import Any, Tuple
 import jax, jax.numpy as jnp, jax.random as jr 
 import equinox as eqx
-from jaxtyping import PyTree
 import optax
 from sklearn.datasets import make_moons
 from sklearn.preprocessing import StandardScaler
@@ -26,7 +25,7 @@ def make_step(
     model: MAF, 
     x: Array, 
     y: Array, 
-    opt_state: PyTree,
+    opt_state: OptState,
     opt: Optimiser
 ) -> Tuple[MAF, OptState, Array]:
     _fn = eqx.filter_value_and_grad(batch_loss_fn)
@@ -46,6 +45,7 @@ def batch_eval_fn(model: MAF, x: Array, y: Array) -> Array:
 key = jr.PRNGKey(0)
 n_data = 2000
 n_steps = 10_000
+lr = 2e-4
 n_samples = 20_000
 hidden_dim = 8
 n_layers = 5
@@ -55,8 +55,8 @@ X, Y = jnp.asarray(X), jnp.asarray(Y)[:, jnp.newaxis]
 scaler = StandardScaler()
 X = scaler.fit_transform(X)
 
-data_dim = X.shape[-1]
-y_dim = Y.shape[-1]
+_, data_dim = X.shape
+_, y_dim = Y.shape
 
 layers = []
 for i in range(n_layers):
@@ -66,7 +66,7 @@ for i in range(n_layers):
 
 maf = MAF(data_dim, *layers)
 
-opt = optax.adam(2e-4)
+opt = optax.adam(lr)
 opt_state = opt.init(eqx.filter(maf, eqx.is_array))
 
 losses = []
