@@ -15,6 +15,7 @@ def get_mask(in_size, out_size, n_features, mask_type=None):
         out_degrees = jnp.arange(out_size) % n_features - 1
     else:
         out_degrees = jnp.arange(out_size) % (n_features - 1)
+
     return (out_degrees[..., jnp.newaxis] >= in_degrees[jnp.newaxis, ...])
 
 
