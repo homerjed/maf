@@ -5,48 +5,48 @@ import jax.random as jr
 import equinox as eqx
 
 
-def get_mask(in_features, out_features, in_flow_features, mask_type=None):
+def get_mask(in_size, out_size, n_features, mask_type=None):
     if mask_type == 'input':
-        in_degrees = jnp.arange(in_features) % in_flow_features # Check this gives correct range...
+        in_degrees = jnp.arange(in_size) % n_features # Check this gives correct range...
     else:
-        in_degrees = jnp.arange(in_features) % (in_flow_features - 1)
+        in_degrees = jnp.arange(in_size) % (n_features - 1)
 
     if mask_type == 'output':
-        out_degrees = jnp.arange(out_features) % in_flow_features - 1
+        out_degrees = jnp.arange(out_size) % n_features - 1
     else:
-        out_degrees = jnp.arange(out_features) % (in_flow_features - 1)
-    return (out_degrees[..., None] >= in_degrees[None, ...])
+        out_degrees = jnp.arange(out_size) % (n_features - 1)
+    return (out_degrees[..., jnp.newaxis] >= in_degrees[jnp.newaxis, ...])
 
 
 class MaskedLinear(eqx.Module):
     weight: jax.Array
     bias: jax.Array
     mask: jax.Array
-    cond_linear: Optional[eqx.nn.Linear] = None
+    condition: Optional[eqx.nn.Linear] = None
 
     def __init__(
         self,
-        in_features,
-        out_features,
+        in_size,
+        out_size,
         mask,
-        cond_in_features=None,
+        y_dim=None,
         *,
         key
     ):
         key_w, key_c = jr.split(key)
-        self.weight = jr.normal(key_w, (out_features, in_features))
-        self.bias = jnp.zeros((out_features,))
+        self.weight = jr.normal(key_w, (out_size, in_size))
+        self.bias = jnp.zeros((out_size,))
 
-        if cond_in_features is not None:
-            self.cond_linear = eqx.nn.Linear(
-                cond_in_features, out_features, use_bias=False, key=key_c
+        if y_dim is not None:
+            self.condition = eqx.nn.Linear(
+                y_dim, out_size, use_bias=False, key=key_c
             )
         self.mask = mask
 
-    def __call__(self, inputs, cond_inputs=None, key=None):
-        output = (self.weight * self.mask) @ inputs + self.bias
-        if cond_inputs is not None:
-            output += self.cond_linear(cond_inputs)
+    def __call__(self, x, y=None, key=None):
+        output = (self.weight * jax.lax.stop_gradient(self.mask)) @ x + self.bias
+        if y is not None:
+            output += self.condition(y)
         return output
 
 

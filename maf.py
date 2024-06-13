@@ -11,10 +11,10 @@ class Permute(eqx.Module):
     perm: jax.Array
     reverse_perm: jax.Array
 
-    def __init__(self, nvars, perm=None, *, key):
+    def __init__(self, in_size, perm=None, *, key):
         # If perm is none, chose some random permutation that gets fixed at initialization
         if perm is None:
-            perm = jr.permutation(key, jnp.arange(nvars))
+            perm = jr.permutation(key, jnp.arange(in_size))
         self.perm = perm
         self.reverse_perm = jnp.argsort(perm)
 
